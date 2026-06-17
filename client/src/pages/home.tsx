@@ -36,7 +36,7 @@ export default function Home() {
                 style={{ background: 'rgba(5,5,15,0.85)', backdropFilter: 'blur(12px)' }}
             >
                 {/* Logo */}
-                <a href="#" className="flex items-center gap-2.5 no-underline">
+                <Link to="/" className="flex items-center gap-2.5 no-underline">
                     <img src={logo} alt="Indian Bounty.fun" className="w-8 h-8 object-contain" />
                     <span className="font-bold text-lg tracking-tight">
                         <span className="text-white">Indian </span>
@@ -44,7 +44,7 @@ export default function Home() {
                         <span className="text-[#BF5FFF]">.</span>
                         <span className="text-white">fun</span>
                     </span>
-                </a>
+                </Link>
 
                 {/* Desktop links */}
                 <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0">
@@ -59,14 +59,24 @@ export default function Home() {
                         </a>
                     </li>
                     <li>
-                        <a
-                            href="#"
+                        <Link
+                            to="/dashboard"
+                            className="px-5 py-2 rounded-md border border-white/15 text-white/70
+                         text-xs font-bold tracking-widest uppercase
+                         hover:border-[rgba(191,95,255,0.4)] hover:text-white transition-all duration-200 no-underline"
+                        >
+                            Dashboard
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/login"
                             className="px-5 py-2 rounded-md border border-[#00BFFF] text-[#00BFFF]
                          text-xs font-bold tracking-widest uppercase
                          hover:bg-[rgba(0,191,255,0.1)] transition-all duration-200 no-underline"
                         >
                             Launch App
-                        </a>
+                        </Link>
                     </li>
                 </ul>
 
@@ -101,15 +111,24 @@ export default function Home() {
                             {['How it works', 'Bcoins'][i]}
                         </a>
                     ))}
-                    <a
-                        href="#"
+                    <Link
+                        to="/dashboard"
+                        onClick={() => setMenuOpen(false)}
+                        className="text-center px-5 py-3 rounded-lg border border-white/15
+                       text-white/70 text-sm font-bold tracking-wider uppercase
+                       hover:border-[rgba(191,95,255,0.4)] hover:text-white transition-all duration-200 no-underline"
+                    >
+                        Dashboard
+                    </Link>
+                    <Link
+                        to="/login"
                         onClick={() => setMenuOpen(false)}
                         className="text-center px-5 py-3 rounded-lg border border-[#00BFFF]
                        text-[#00BFFF] text-sm font-bold tracking-wider uppercase
                        hover:bg-[rgba(0,191,255,0.1)] transition-all duration-200 no-underline mt-1"
                     >
                         Launch App
-                    </a>
+                    </Link>
                 </div>
             )}
 

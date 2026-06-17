@@ -14,8 +14,29 @@ export default function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
 
-  // Bcoin balance — replace with real wallet data once the wallet API is wired up
-  const [bcoinBalance] = useState(0)
+  // Bcoin balance — always sourced fresh from /me, not from localStorage guesses
+  const [bcoinBalance, setBcoinBalance] = useState<number>(0)
+
+  const fetchMe = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/v1/auth/me', {
+        method: 'GET',
+        credentials: 'include',
+      })
+      const data = await res.json()
+
+      if (data.success && typeof data.data?.user?.bcoins === 'number') {
+        setBcoinBalance(data.data.user.bcoins)
+      }
+    } catch {
+      // silently ignore — navbar just keeps showing last known balance
+    }
+  }
+
+  // Fetch fresh balance on every mount (i.e. every time Layout wraps a page)
+  useEffect(() => {
+    fetchMe()
+  }, [])
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -38,7 +59,7 @@ export default function Layout({ children }: LayoutProps) {
       // proceed with client-side logout even if the request fails
     } finally {
       localStorage.removeItem('user')
-      navigate('/login')
+      navigate('/')
     }
   }
 
@@ -109,7 +130,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Right — Bcoin balance + Profile */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
 
-          {/* Bcoin balance pill */}
+          {/* Bcoin balance pill — fetched fresh from /me on every Layout mount */}
           <Link
             to="/wallet"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full

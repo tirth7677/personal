@@ -6,6 +6,7 @@ import { config } from "../config/env";
 import { signupSchema, loginSchema } from "../utils/validators";
 import { response } from "../utils/response";
 import { ZodError } from "zod";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 const COOKIE_NAME = "token";
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
@@ -104,6 +105,32 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
-  res.clearCookie(COOKIE_NAME);
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   return response(res, 200, true, "Logged out successfully");
+};
+
+export const me = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        bcoins: true,
+      },
+    });
+
+    if (!user) {
+      return response(res, 404, false, "User not found");
+    }
+
+    return response(res, 200, true, "User fetched successfully", { user });
+  } catch (error) {
+    return response(res, 500, false, "Internal server error");
+  }
 };
