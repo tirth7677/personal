@@ -2,14 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import logo from '../assets/logo.png'
 
-export default function Register() {
+export default function Login() {
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -17,28 +15,29 @@ export default function Register() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setMessage(null)
-
-    if (password !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Passwords do not match.' })
-      return
-    }
-
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/signup', {
+      const res = await fetch('http://localhost:5000/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // REQUIRED — lets the browser store & send the httpOnly cookie
         body: JSON.stringify({ email, password }),
       })
 
       const data = await res.json()
 
       if (data.success) {
-        setMessage({ type: 'success', text: data.message || 'Account created successfully' })
-        setTimeout(() => navigate('/login'), 1500)
+        setMessage({ type: 'success', text: data.message || 'Logged in successfully' })
+
+        // Optional: keep basic user info in memory for UI use (NOT the token — that's httpOnly, JS can't see it)
+        if (data.data?.user) {
+          localStorage.setItem('user', JSON.stringify(data.data.user))
+        }
+
+        setTimeout(() => navigate('/dashboard'), 1000)
       } else {
-        setMessage({ type: 'error', text: data.message || 'Something went wrong. Please try again.' })
+        setMessage({ type: 'error', text: data.message || 'Invalid email or password.' })
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Could not connect to server. Please try again.' })
@@ -87,7 +86,7 @@ export default function Register() {
         </Link>
       </nav>
 
-      {/* REGISTER FORM */}
+      {/* LOGIN FORM */}
       <section className="relative z-10 min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-8 py-10 sm:py-12">
         <div className="w-full max-w-md">
 
@@ -102,16 +101,16 @@ export default function Register() {
                 className="w-1.5 h-1.5 rounded-full bg-[#BF5FFF]"
                 style={{ animation: 'pulseDot 1.8s ease-in-out infinite' }}
               />
-              Create Account
+              Welcome Back
             </div>
           </div>
 
           {/* Heading */}
           <h1 className="font-bold text-2xl sm:text-3xl lg:text-4xl text-center tracking-tight text-white mb-2">
-            Join the Bounty
+            Log In
           </h1>
           <p className="text-white/40 text-xs sm:text-sm text-center mb-8 px-2">
-            Create your account to start posting and winning bounties.
+            Enter your details to access your bounties and wallet.
           </p>
 
           {/* Card */}
@@ -147,10 +146,9 @@ export default function Register() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     required
-                    minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder="Enter your password"
                     className="w-full px-4 py-3 pr-16 rounded-lg text-white text-sm placeholder-white/25
                                focus:outline-none focus:border-[#00BFFF] transition-colors duration-200"
                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
@@ -166,49 +164,6 @@ export default function Register() {
                     {showPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
-              </div>
-
-              {/* Confirm Password */}
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="confirmPassword" className="text-white/50 text-xs font-semibold tracking-wide uppercase">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    minLength={6}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Re-enter your password"
-                    className="w-full px-4 py-3 pr-16 rounded-lg text-white text-sm placeholder-white/25
-                               focus:outline-none focus:border-[#00BFFF] transition-colors duration-200"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2
-                               text-[#00BFFF] text-xs font-bold tracking-wide uppercase
-                               bg-transparent border-0 cursor-pointer
-                               hover:opacity-70 transition-opacity"
-                  >
-                    {showConfirmPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-
-              {/* UPI note — informational only, not collected here */}
-              <div
-                className="flex items-start gap-2.5 px-4 py-3 rounded-lg border border-[rgba(0,191,255,0.12)]"
-                style={{ background: 'rgba(0,191,255,0.04)' }}
-              >
-                <span className="text-sm mt-0.5 shrink-0">💡</span>
-                <p className="text-white/40 text-xs leading-relaxed">
-                  We don't ask for your UPI ID here. You'll only be asked to enter it at the moment you
-                  buy or withdraw Bcoins — and we never store it.
-                </p>
               </div>
 
               {/* Inline API message */}
@@ -243,18 +198,18 @@ export default function Register() {
                   boxShadow: '0 0 24px rgba(0,191,255,0.25)',
                 }}
               >
-                {loading ? 'Creating account...' : 'Create Account →'}
+                {loading ? 'Logging in...' : 'Log In →'}
               </button>
 
             </form>
 
           </div>
 
-          {/* Login link */}
+          {/* Register link */}
           <p className="text-center text-white/40 text-sm mt-6">
-            Already have an account?{' '}
-            <Link to="/login" className="text-[#00BFFF] hover:opacity-70 transition-opacity no-underline font-semibold">
-              Log in
+            Don't have an account?{' '}
+            <Link to="/register" className="text-[#00BFFF] hover:opacity-70 transition-opacity no-underline font-semibold">
+              Create one
             </Link>
           </p>
 
