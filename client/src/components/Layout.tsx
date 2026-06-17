@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import logo from '../assets/logo.svg'
 
 interface LayoutProps {
   children: ReactNode

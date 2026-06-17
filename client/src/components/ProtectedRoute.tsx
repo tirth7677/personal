@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import logo from '../assets/logo.svg'
 
 interface ProtectedRouteProps {
   children: ReactNode
