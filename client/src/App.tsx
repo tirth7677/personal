@@ -5,6 +5,9 @@ import Privacy from './pages/Privacy'
 import NotFound from './pages/notfound'
 import Register from './pages/Register'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Wallet from "./pages/Wallet"
+import PaymentHistory from './pages/PaymentHistory'
 
 function App() {
   return (
@@ -16,6 +19,9 @@ function App() {
         <Route path="*"         element={<NotFound />} />
         <Route path="/register" element={<Register />} />
         <Route path='/login' element={<Login/>}/>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path='/Wallet' element={<Wallet/>}/>
+        <Route path="/payment" element={<PaymentHistory />} />
       </Routes>
     </BrowserRouter>
   )

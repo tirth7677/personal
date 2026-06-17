@@ -26,6 +26,7 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "razorpay": "^2.9.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {

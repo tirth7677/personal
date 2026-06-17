@@ -13,8 +13,25 @@ model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   password  String
+  bcoins    Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  paymentHistory PaymentHistory[]
+
   @@map("users")
+}
+
+model PaymentHistory {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  amount    Int
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("payment_history")
 }
