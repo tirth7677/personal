@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useUser } from '../context/UserContext'
 
 declare global {
   interface Window {
@@ -10,7 +11,8 @@ declare global {
 const PRESET_AMOUNTS = [100, 500, 1000]
 
 export default function Wallet() {
-  const [bcoins, setBcoins] = useState<number>(0)
+  const { user, refreshUser } = useUser()
+
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100)
   const [customAmount, setCustomAmount] = useState('')
   const [loading, setLoading] = useState(false)
@@ -28,28 +30,6 @@ export default function Wallet() {
     return () => {
       document.body.removeChild(script)
     }
-  }, [])
-
-  // Single source of truth for balance — always pulled fresh from /me, never from localStorage guesses
-  const fetchMe = async () => {
-    try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/me', {
-        method: 'GET',
-        credentials: 'include',
-      })
-      const data = await res.json()
-
-      if (data.success && typeof data.data?.user?.bcoins === 'number') {
-        setBcoins(data.data.user.bcoins)
-      }
-    } catch {
-      // ignore — keep showing last known balance
-    }
-  }
-
-  // Fetch on mount
-  useEffect(() => {
-    fetchMe()
   }, [])
 
   const getFinalAmount = (): number => {
@@ -142,9 +122,10 @@ export default function Wallet() {
             const verifyData = await verifyRes.json()
 
             if (verifyData.success) {
-              // Don't trust the verify response for the balance — re-fetch /me
-              // so the navbar pill and this page both reflect the true, current state.
-              await fetchMe()
+              // Refresh shared UserContext — this single call updates the balance
+              // everywhere it's displayed (this page AND the navbar pill in Layout)
+              // since both read from the same context instance.
+              await refreshUser()
               setMessage({ type: 'success', text: verifyData.message || 'Bcoins credited successfully!' })
             } else {
               setMessage({ type: 'error', text: verifyData.message || 'Payment verification failed.' })
@@ -183,7 +164,7 @@ export default function Wallet() {
           Add Bcoins to post bounties. ₹1 = 1 Bcoin, with a 10% platform fee on deposit.
         </p>
 
-        {/* Balance card */}
+        {/* Balance card — reads directly from shared UserContext */}
         <div
           className="rounded-2xl border border-[rgba(0,191,255,0.2)] p-8 mb-10"
           style={{ background: 'linear-gradient(135deg, rgba(0,191,255,0.06) 0%, rgba(191,95,255,0.08) 100%)' }}
@@ -200,7 +181,7 @@ export default function Wallet() {
                 backgroundClip: 'text',
               }}
             >
-              {bcoins.toLocaleString()}
+              {(user?.bcoins ?? 0).toLocaleString()}
             </span>
             <span className="text-white/40 text-sm font-semibold">Bcoins</span>
           </div>

@@ -5,6 +5,7 @@ import logo from '../assets/logo.svg'
 export default function Register() {
   const navigate = useNavigate()
 
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -29,7 +30,7 @@ export default function Register() {
       const res = await fetch('http://localhost:5000/api/v1/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, email, password }),
       })
 
       const data = await res.json()
@@ -118,6 +119,25 @@ export default function Register() {
           <div className="bg-[#11112A] border border-[rgba(0,191,255,0.15)] rounded-xl p-5 sm:p-8">
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+              {/* Username */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="username" className="text-white/50 text-xs font-semibold tracking-wide uppercase">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  required
+                  minLength={3}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Choose a username"
+                  className="w-full px-4 py-3 rounded-lg text-white text-sm placeholder-white/25
+                             focus:outline-none focus:border-[#00BFFF] transition-colors duration-200"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+                />
+              </div>
 
               {/* Email */}
               <div className="flex flex-col gap-1.5">

@@ -11,6 +11,7 @@ datasource db {
 
 model User {
   id        Int      @id @default(autoincrement())
+  username  String   @unique
   email     String   @unique
   password  String
   bcoins    Int      @default(0)
@@ -18,6 +19,9 @@ model User {
   updatedAt DateTime @updatedAt
 
   paymentHistory PaymentHistory[]
+  bounties       Bounty[]
+  submissions    Submission[]
+  winnings       Winner[]
 
   @@map("users")
 }
@@ -34,4 +38,54 @@ model PaymentHistory {
 
   @@index([userId])
   @@map("payment_history")
+}
+
+model Bounty {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  price       Int
+  timeLimit   DateTime
+  description String
+  filePath    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  submissions Submission[]
+  winner      Winner?
+
+  @@index([userId])
+  @@map("bounties")
+}
+
+model Submission {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  bountyId  Int
+  filePath  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  bounty Bounty @relation(fields: [bountyId], references: [id])
+
+  @@index([userId])
+  @@index([bountyId])
+  @@map("submissions")
+}
+
+model Winner {
+  id        Int      @id @default(autoincrement())
+  bountyId  Int      @unique
+  userId    Int
+  price     Int
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bounty Bounty @relation(fields: [bountyId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("winners")
 }

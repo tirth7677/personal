@@ -29,23 +29,30 @@ const generateToken = (userId: number) => {
 export const signup = async (req: Request, res: Response) => {
   try {
     const parsed = signupSchema.parse(req.body);
-    const { email, password } = parsed;
+    const { username, email, password } = parsed;
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { username }],
+      },
+    });
 
     if (existingUser) {
-      return response(res, 409, false, "An account with this email already exists");
+      const conflictField = existingUser.email === email ? "email" : "username";
+      return response(res, 409, false, `An account with this ${conflictField} already exists`);
     }
 
     const hashedPassword = await argon2.hash(password);
 
     const user = await prisma.user.create({
       data: {
+        username,
         email,
         password: hashedPassword,
       },
       select: {
         id: true,
+        username: true,
         email: true,
         createdAt: true,
       },
@@ -121,6 +128,7 @@ export const me = async (req: AuthRequest, res: Response) => {
       where: { id: userId },
       select: {
         id: true,
+        username: true,
         bcoins: true,
       },
     });

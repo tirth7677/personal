@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import logo from '../assets/logo.svg'
+import { useUser } from '../context/UserContext'
 
 interface LayoutProps {
   children: ReactNode
@@ -9,34 +10,11 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, clearUser } = useUser()
 
   const [profileOpen, setProfileOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
-
-  // Bcoin balance — always sourced fresh from /me, not from localStorage guesses
-  const [bcoinBalance, setBcoinBalance] = useState<number>(0)
-
-  const fetchMe = async () => {
-    try {
-      const res = await fetch('http://localhost:5000/api/v1/auth/me', {
-        method: 'GET',
-        credentials: 'include',
-      })
-      const data = await res.json()
-
-      if (data.success && typeof data.data?.user?.bcoins === 'number') {
-        setBcoinBalance(data.data.user.bcoins)
-      }
-    } catch {
-      // silently ignore — navbar just keeps showing last known balance
-    }
-  }
-
-  // Fetch fresh balance on every mount (i.e. every time Layout wraps a page)
-  useEffect(() => {
-    fetchMe()
-  }, [])
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -58,12 +36,15 @@ export default function Layout({ children }: LayoutProps) {
     } catch (err) {
       // proceed with client-side logout even if the request fails
     } finally {
+      clearUser()
       localStorage.removeItem('user')
       navigate('/')
     }
   }
 
   const isActive = (path: string) => location.pathname === path
+
+  const firstLetter = user?.username ? user.username.charAt(0).toUpperCase() : '?'
 
   return (
     <div className="bg-[#05050F] text-white font-['Space_Grotesk',sans-serif] min-h-screen overflow-x-hidden flex flex-col">
@@ -130,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Right — Bcoin balance + Profile */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
 
-          {/* Bcoin balance pill — fetched fresh from /me on every Layout mount */}
+          {/* Bcoin balance pill — read from shared UserContext, stays in sync everywhere */}
           <Link
             to="/wallet"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full
@@ -140,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
           >
             <span className="text-sm">🪙</span>
             <span className="font-mono text-xs sm:text-sm font-bold text-[#00BFFF]">
-              {bcoinBalance.toLocaleString()}
+              {(user?.bcoins ?? 0).toLocaleString()}
             </span>
           </Link>
 
@@ -150,19 +131,30 @@ export default function Layout({ children }: LayoutProps) {
               onClick={() => setProfileOpen(!profileOpen)}
               className="w-9 h-9 rounded-full flex items-center justify-center
                          border border-[rgba(0,191,255,0.25)] bg-transparent cursor-pointer
-                         hover:border-[rgba(0,191,255,0.5)] transition-all duration-200"
+                         hover:border-[rgba(0,191,255,0.5)] transition-all duration-200
+                         font-bold text-sm text-[#BF5FFF]"
               style={{ background: 'rgba(191,95,255,0.08)' }}
               aria-label="Profile menu"
             >
-              <span className="text-sm">👤</span>
+              {firstLetter}
             </button>
 
             {profileOpen && (
               <div
-                className="absolute right-0 top-12 w-48 rounded-xl border border-[rgba(0,191,255,0.15)]
+                className="absolute right-0 top-12 w-52 rounded-xl border border-[rgba(0,191,255,0.15)]
                            overflow-hidden z-50"
                 style={{ background: '#11112A', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
               >
+                {/* Username header */}
+                <div className="px-4 py-3 border-b border-white/5">
+                  <div className="text-white/35 text-[0.65rem] font-semibold tracking-wide uppercase mb-0.5">
+                    Signed in as
+                  </div>
+                  <div className="text-white text-sm font-bold truncate">
+                    {user?.username ?? 'Loading...'}
+                  </div>
+                </div>
+
                 <Link
                   to="/payment"
                   onClick={() => setProfileOpen(false)}
