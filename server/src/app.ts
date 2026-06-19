@@ -6,7 +6,8 @@ import cookieParser from "cookie-parser";
 
 import healthRoutes from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
-import paymentRoutes from "./routes/payment.routes"
+import paymentRoutes from "./routes/payment.routes";
+import bountyRoutes from "./routes/bounty.routes";
 import { response } from "./utils/response";
 import { config } from "./config/env";
 
@@ -29,6 +30,7 @@ app.use(morgan(config.nodeEnv === "development" ? "dev" : "combined"));
 app.use("/api/v1/health", healthRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/payment", paymentRoutes);
+app.use("/api/v1/bounty", bountyRoutes);
 
 // 404 fallback for unmatched routes
 app.use((req: Request, res: Response) => {

@@ -22,6 +22,7 @@ model User {
   bounties       Bounty[]
   submissions    Submission[]
   winnings       Winner[]
+  bcoinsUsage    BcoinsUsage[]
 
   @@map("users")
 }
@@ -43,10 +44,12 @@ model PaymentHistory {
 model Bounty {
   id          Int      @id @default(autoincrement())
   userId      Int
+  title       String
   price       Int
   timeLimit   DateTime
   description String
   filePath    String?
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -88,4 +91,18 @@ model Winner {
 
   @@index([userId])
   @@map("winners")
+}
+
+model BcoinsUsage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String // "credit" or "debit"
+  amount    Int
+  reason    String // e.g. "payment", "bounty_posted", "bounty_won", "bounty_refunded"
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("bcoins_usage")
 }

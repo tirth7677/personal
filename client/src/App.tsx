@@ -9,6 +9,9 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Wallet from "./pages/Wallet"
 import PaymentHistory from './pages/PaymentHistory'
+import BcoinsHistory from './pages/Bcoinshistory'
+import CreateBounty from './pages/Createbounty'
+import MyBounty from './pages/mybounty'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -28,6 +31,9 @@ function App() {
           {/* Protected — requires login, shows modal if not authenticated */}
           <Route path='/Wallet' element={<ProtectedRoute><Wallet/></ProtectedRoute>}/>
           <Route path="/payment" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
+          <Route path="/bcoins/history" element={<ProtectedRoute><BcoinsHistory /></ProtectedRoute>} />
+          <Route path="/bounty/create" element={<ProtectedRoute><CreateBounty /></ProtectedRoute>} />
+          <Route path="/bounty/mine" element={<ProtectedRoute><MyBounty /></ProtectedRoute>} />
 
           {/* Catch-all must stay LAST */}
           <Route path="*" element={<NotFound />} />

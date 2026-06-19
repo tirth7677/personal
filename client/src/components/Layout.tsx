@@ -13,14 +13,19 @@ export default function Layout({ children }: LayoutProps) {
   const { user, clearUser } = useUser()
 
   const [profileOpen, setProfileOpen] = useState(false)
+  const [bountyOpen, setBountyOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const bountyRef = useRef<HTMLDivElement>(null)
 
-  // Close profile dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false)
+      }
+      if (bountyRef.current && !bountyRef.current.contains(e.target as Node)) {
+        setBountyOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -43,6 +48,7 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   const isActive = (path: string) => location.pathname === path
+  const isBountyActive = isActive('/bounty/create') || isActive('/bounty/mine')
 
   const firstLetter = user?.username ? user.username.charAt(0).toUpperCase() : '?'
 
@@ -84,18 +90,56 @@ export default function Layout({ children }: LayoutProps) {
           </span>
         </Link>
 
-        {/* Center — Create Bounty / Participant (desktop) */}
+        {/* Center — Bounty dropdown / Participant (desktop) */}
         <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
-          <Link
-            to="/bounty/create"
-            className={`px-4 py-2 rounded-md text-xs font-bold tracking-widest uppercase no-underline
-                        transition-all duration-200 border
-                        ${isActive('/bounty/create')
-                          ? 'text-[#00BFFF] border-[#00BFFF] bg-[rgba(0,191,255,0.1)]'
-                          : 'text-white/50 border-transparent hover:text-white hover:border-[rgba(0,191,255,0.2)]'}`}
-          >
-            Create Bounty
-          </Link>
+
+          {/* Bounty dropdown */}
+          <div className="relative" ref={bountyRef}>
+            <button
+              onClick={() => setBountyOpen(!bountyOpen)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-bold tracking-widest uppercase
+                          transition-all duration-200 border bg-transparent cursor-pointer
+                          ${isBountyActive
+                            ? 'text-[#00BFFF] border-[#00BFFF] bg-[rgba(0,191,255,0.1)]'
+                            : 'text-white/50 border-transparent hover:text-white hover:border-[rgba(0,191,255,0.2)]'}`}
+            >
+              Bounty
+              <span className={`text-[0.6rem] transition-transform duration-200 ${bountyOpen ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+
+            {bountyOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-12 w-48 rounded-xl border border-[rgba(0,191,255,0.15)]
+                           overflow-hidden z-50"
+                style={{ background: '#11112A', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+              >
+                <Link
+                  to="/bounty/create"
+                  onClick={() => setBountyOpen(false)}
+                  className={`flex items-center gap-2.5 px-4 py-3 text-sm no-underline border-b border-white/5
+                              transition-colors duration-150
+                              ${isActive('/bounty/create')
+                                ? 'text-[#00BFFF] bg-[rgba(0,191,255,0.08)]'
+                                : 'text-white/70 hover:bg-[rgba(0,191,255,0.08)] hover:text-white'}`}
+                >
+                  <span>🎯</span> Create Bounty
+                </Link>
+                <Link
+                  to="/bounty/mine"
+                  onClick={() => setBountyOpen(false)}
+                  className={`flex items-center gap-2.5 px-4 py-3 text-sm no-underline
+                              transition-colors duration-150
+                              ${isActive('/bounty/mine')
+                                ? 'text-[#00BFFF] bg-[rgba(0,191,255,0.08)]'
+                                : 'text-white/70 hover:bg-[rgba(0,191,255,0.08)] hover:text-white'}`}
+                >
+                  <span>📋</span> View My Bounty
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Participant */}
           <Link
             to="/participant"
             className={`px-4 py-2 rounded-md text-xs font-bold tracking-widest uppercase no-underline
@@ -111,19 +155,17 @@ export default function Layout({ children }: LayoutProps) {
         {/* Right — Bcoin balance + Profile */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
 
-          {/* Bcoin balance pill — read from shared UserContext, stays in sync everywhere */}
-          <Link
-            to="/wallet"
+          {/* Bcoin balance pill — display only, not clickable */}
+          <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                       border border-[rgba(0,191,255,0.2)] no-underline
-                       hover:border-[rgba(0,191,255,0.4)] transition-all duration-200"
+                       border border-[rgba(0,191,255,0.2)] cursor-default select-none"
             style={{ background: 'rgba(0,191,255,0.06)' }}
           >
             <span className="text-sm">🪙</span>
             <span className="font-mono text-xs sm:text-sm font-bold text-[#00BFFF]">
               {(user?.bcoins ?? 0).toLocaleString()}
             </span>
-          </Link>
+          </div>
 
           {/* Profile dropdown */}
           <div className="relative" ref={profileRef}>
@@ -141,7 +183,7 @@ export default function Layout({ children }: LayoutProps) {
 
             {profileOpen && (
               <div
-                className="absolute right-0 top-12 w-52 rounded-xl border border-[rgba(0,191,255,0.15)]
+                className="absolute right-0 top-12 w-56 rounded-xl border border-[rgba(0,191,255,0.15)]
                            overflow-hidden z-50"
                 style={{ background: '#11112A', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
               >
@@ -156,13 +198,31 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
 
                 <Link
-                  to="/payment"
+                  to="/wallet"
                   onClick={() => setProfileOpen(false)}
                   className="flex items-center gap-2.5 px-4 py-3 text-sm text-white/70
                              hover:bg-[rgba(0,191,255,0.08)] hover:text-white
                              transition-colors duration-150 no-underline border-b border-white/5"
                 >
                   <span>💳</span> Payment
+                </Link>
+                <Link
+                  to="/payment"
+                  onClick={() => setProfileOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-3 text-sm text-white/70
+                             hover:bg-[rgba(0,191,255,0.08)] hover:text-white
+                             transition-colors duration-150 no-underline border-b border-white/5"
+                >
+                  <span>🧾</span> Payment History
+                </Link>
+                <Link
+                  to="/bcoins/history"
+                  onClick={() => setProfileOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-3 text-sm text-white/70
+                             hover:bg-[rgba(0,191,255,0.08)] hover:text-white
+                             transition-colors duration-150 no-underline border-b border-white/5"
+                >
+                  <span>🪙</span> Bcoins History
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -189,7 +249,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </nav>
 
-      {/* Mobile menu — Create Bounty / Participant */}
+      {/* Mobile menu — Bounty links / Participant */}
       {mobileMenuOpen && (
         <div
           className="md:hidden fixed top-16 left-0 right-0 z-40
@@ -197,6 +257,7 @@ export default function Layout({ children }: LayoutProps) {
                      border-b border-[rgba(0,191,255,0.1)]"
           style={{ background: 'rgba(5,5,15,0.97)', backdropFilter: 'blur(12px)' }}
         >
+          <div className="text-white/30 text-[0.65rem] font-semibold tracking-widest uppercase px-1">Bounty</div>
           <Link
             to="/bounty/create"
             onClick={() => setMobileMenuOpen(false)}
@@ -207,6 +268,18 @@ export default function Layout({ children }: LayoutProps) {
           >
             Create Bounty
           </Link>
+          <Link
+            to="/bounty/mine"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`text-center px-4 py-3 rounded-lg text-sm font-bold tracking-wider uppercase no-underline border
+                        ${isActive('/bounty/mine')
+                          ? 'text-[#00BFFF] border-[#00BFFF] bg-[rgba(0,191,255,0.1)]'
+                          : 'text-white/60 border-white/10'}`}
+          >
+            View My Bounty
+          </Link>
+
+          <div className="text-white/30 text-[0.65rem] font-semibold tracking-widest uppercase px-1 mt-2">Participant</div>
           <Link
             to="/participant"
             onClick={() => setMobileMenuOpen(false)}

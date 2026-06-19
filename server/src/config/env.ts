@@ -11,6 +11,8 @@ const requiredEnvVars = [
   "CLIENT_URL",
   "RAZORPAY_KEY_ID",
   "RAZORPAY_KEY_SECRET",
+  "GCP_BUCKET_NAME",
+  "GCP_KEY_FILE_PATH",
 ] as const;
 
 for (const key of requiredEnvVars) {
@@ -28,4 +30,6 @@ export const config = {
   clientUrl: process.env.CLIENT_URL as string,
   razorpayKeyId: process.env.RAZORPAY_KEY_ID as string,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET as string,
+  gcpBucketName: process.env.GCP_BUCKET_NAME as string,
+  gcpKeyFilePath: process.env.GCP_KEY_FILE_PATH as string,
 };

@@ -164,3 +164,37 @@ export const getPaymentHistory = async (req: AuthRequest, res: Response) => {
     return response(res, 500, false, "Failed to fetch payment history");
   }
 };
+
+// Fetch paginated Bcoins usage ledger for the logged-in user, newest first, cursor-based.
+// Unlike getPaymentHistory (Razorpay top-ups only), this covers every Bcoins movement —
+// payments, bounty postings, bounty winnings, etc.
+export const getBcoinsUsage = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const cursor = req.query.cursor ? Number(req.query.cursor) : undefined;
+
+    const usage = await prisma.bcoinsUsage.findMany({
+      where: { userId },
+      orderBy: { id: "desc" },
+      take: limit + 1,
+      ...(cursor && {
+        cursor: { id: cursor },
+        skip: 1,
+      }),
+    });
+
+    const hasMore = usage.length > limit;
+    const results = hasMore ? usage.slice(0, limit) : usage;
+    const nextCursor = hasMore ? results[results.length - 1]?.id ?? null : null;
+
+    return response(res, 200, true, "Bcoins usage fetched successfully", {
+      usage: results,
+      nextCursor,
+      hasMore,
+    });
+  } catch (error) {
+    console.error("Get Bcoins usage error:", error);
+    return response(res, 500, false, "Failed to fetch Bcoins usage");
+  }
+};
