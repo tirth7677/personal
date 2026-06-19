@@ -15,6 +15,7 @@ export default function CreateBounty() {
   const [filePreview, setFilePreview] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(false)
+  const [uploadStage, setUploadStage] = useState<'idle' | 'uploading' | 'creating'>('idle')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Minimum allowed datetime — now, formatted for the input[type=datetime-local]
@@ -42,6 +43,43 @@ export default function CreateBounty() {
   const removeFile = () => {
     setFile(null)
     setFilePreview(null)
+  }
+
+  // STEP 1 — Ask backend for a signed upload URL, then PUT the raw file bytes
+  // directly to GCS using that URL. Backend never sees the file itself here.
+  // Returns the filePath string the backend generated, to be sent later to /create.
+  const uploadFileToGCS = async (fileToUpload: File): Promise<string> => {
+    const urlRes = await fetch('http://localhost:5000/api/v1/bounty/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        filename: fileToUpload.name,
+        contentType: fileToUpload.type,
+      }),
+    })
+
+    const urlData = await urlRes.json()
+
+    if (!urlData.success) {
+      throw new Error(urlData.message || 'Could not get an upload URL.')
+    }
+
+    const { uploadUrl, filePath } = urlData.data
+
+    // PUT the raw file directly to GCS — not to our backend.
+    // Content-Type must match exactly what was used to generate the signed URL.
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': fileToUpload.type },
+      body: fileToUpload,
+    })
+
+    if (!putRes.ok) {
+      throw new Error('File upload to storage failed. Please try again.')
+    }
+
+    return filePath
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -78,17 +116,28 @@ export default function CreateBounty() {
     setLoading(true)
 
     try {
-      const formData = new FormData()
-      formData.append('title', title)
-      formData.append('price', price)
-      formData.append('timeLimit', new Date(timeLimit).toISOString())
-      formData.append('description', description)
-      if (file) formData.append('file', file)
+      // STEP 1 — Upload file (if any) to GCS first, get back its filePath
+      let filePath: string | null = null
+
+      if (file) {
+        setUploadStage('uploading')
+        filePath = await uploadFileToGCS(file)
+      }
+
+      // STEP 2 — Create the bounty with JSON, passing only the filePath string
+      setUploadStage('creating')
 
       const res = await fetch('http://localhost:5000/api/v1/bounty/create', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: formData, // no Content-Type header — browser sets multipart boundary automatically
+        body: JSON.stringify({
+          title,
+          price: parsedPrice,
+          timeLimit: new Date(timeLimit).toISOString(),
+          description,
+          filePath,
+        }),
       })
 
       const data = await res.json()
@@ -101,14 +150,21 @@ export default function CreateBounty() {
         setMessage({ type: 'error', text: data.message || 'Failed to create bounty.' })
       }
     } catch (err) {
-      setMessage({ type: 'error', text: 'Could not connect to server. Please try again.' })
+      const msg = err instanceof Error ? err.message : 'Could not connect to server. Please try again.'
+      setMessage({ type: 'error', text: msg })
     } finally {
       setLoading(false)
+      setUploadStage('idle')
     }
   }
 
   const parsedPriceLive = Number(price) || 0
   const remainingAfter = (user?.bcoins ?? 0) - parsedPriceLive
+
+  const submitLabel =
+    uploadStage === 'uploading' ? 'Uploading file...' :
+    uploadStage === 'creating'  ? 'Posting bounty...' :
+    'Post Bounty →'
 
   return (
     <Layout>
@@ -302,7 +358,7 @@ export default function CreateBounty() {
                 boxShadow: '0 0 24px rgba(0,191,255,0.25)',
               }}
             >
-              {loading ? 'Posting bounty...' : 'Post Bounty →'}
+              {loading ? submitLabel : 'Post Bounty →'}
             </button>
 
           </form>

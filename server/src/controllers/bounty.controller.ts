@@ -1,41 +1,48 @@
 import { Response } from "express";
 import crypto from "crypto";
 import { prisma } from "../config/db";
-import { bucket,getSignedUrl } from "../config/storage";
+import { getSignedReadUrl, getSignedUploadUrl } from "../config/storage";
 import { response } from "../utils/response";
 import { AuthRequest } from "../middleware/auth.middleware";
 
-// Uploads a single file buffer to GCP under bounty/<userId>/<uuid>_<originalname>
-// Returns the storage path (not a public URL) for storing in the database.
-const uploadFileToGCP = async (
-  userId: number,
-  file: Express.Multer.File
-): Promise<string> => {
-  const uniqueId = crypto.randomUUID();
-  const destinationPath = `bounty/${userId}/${uniqueId}_${file.originalname}`;
+// Step 1 of the upload flow: frontend asks for permission to upload a specific file.
+// Backend never touches file bytes — it just generates a signed PUT URL pointing at
+// a predetermined path under bounty/<userId>/<uuid>_<filename>.
+export const getBountyUploadUrl = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const { filename, contentType } = req.body;
 
-  const blob = bucket.file(destinationPath);
+    if (!filename || typeof filename !== "string") {
+      return response(res, 400, false, "filename is required");
+    }
+    if (!contentType || typeof contentType !== "string") {
+      return response(res, 400, false, "contentType is required");
+    }
 
-  await new Promise<void>((resolve, reject) => {
-    const stream = blob.createWriteStream({
-      metadata: { contentType: file.mimetype },
+    const uniqueId = crypto.randomUUID();
+    const filePath = `bounty/${userId}/${uniqueId}_${filename}`;
+
+    const uploadUrl = await getSignedUploadUrl(filePath, contentType);
+
+    return response(res, 200, true, "Upload URL generated successfully", {
+      uploadUrl,
+      filePath, // frontend must send this back unchanged when creating the bounty
     });
-
-    stream.on("error", (err) => reject(err));
-    stream.on("finish", () => resolve());
-    stream.end(file.buffer);
-  });
-
-  return destinationPath;
+  } catch (error) {
+    console.error("Get bounty upload URL error:", error);
+    return response(res, 500, false, "Failed to generate upload URL");
+  }
 };
 
+// Step 2: create the bounty record. By this point the frontend has already PUT the
+// file directly to GCS using the signed URL from getBountyUploadUrl — this function
+// only receives the filePath string, never the actual file bytes.
 export const createBounty = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
-    const { title, price, timeLimit, description } = req.body;
-    const file = req.file; // populated by multer, optional
+    const { title, price, timeLimit, description, filePath } = req.body;
 
-    // Basic presence/type validation
     if (!title || typeof title !== "string") {
       return response(res, 400, false, "Title is required");
     }
@@ -56,7 +63,18 @@ export const createBounty = async (req: AuthRequest, res: Response) => {
       return response(res, 400, false, "Description is required");
     }
 
-    // Check balance BEFORE uploading anything or starting the transaction
+    // filePath is optional — bounties don't require an attached file.
+    // If provided, it must at least belong to this user's own folder, so users
+    // can't claim someone else's (or an unrelated) GCS object as their bounty's file.
+    if (filePath !== undefined && filePath !== null) {
+      if (typeof filePath !== "string") {
+        return response(res, 400, false, "filePath must be a string");
+      }
+      if (!filePath.startsWith(`bounty/${userId}/`)) {
+        return response(res, 400, false, "Invalid filePath for this user");
+      }
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { bcoins: true },
@@ -75,14 +93,6 @@ export const createBounty = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Upload file to GCP first (outside the DB transaction — GCP has no rollback
-    // concept that Prisma's $transaction can participate in)
-    let filePath: string | null = null;
-    if (file) {
-      filePath = await uploadFileToGCP(userId, file);
-    }
-
-    // Atomically: debit Bcoins, log the debit, create the bounty
     const result = await prisma.$transaction(async (tx) => {
       const updatedUser = await tx.user.update({
         where: { id: userId },
@@ -97,7 +107,7 @@ export const createBounty = async (req: AuthRequest, res: Response) => {
           price: parsedPrice,
           timeLimit: new Date(timeLimit),
           description,
-          filePath,
+          filePath: filePath || null,
           active: true,
         },
       });
@@ -159,11 +169,11 @@ export const getAllBounties = async (req: AuthRequest, res: Response) => {
     const rawItems = hasMore ? bounties.slice(0, limit) : bounties;
     const nextCursor = hasMore ? rawItems[rawItems.length - 1]?.id ?? null : null;
 
-    // Convert each stored filePath into a temporary signed URL the frontend can load directly
+    // Convert each stored filePath into a temporary signed READ URL the frontend can load directly
     const items = await Promise.all(
       rawItems.map(async (bounty) => ({
         ...bounty,
-        filePath: await getSignedUrl(bounty.filePath),
+        filePath: await getSignedReadUrl(bounty.filePath),
       }))
     );
 
@@ -214,7 +224,7 @@ export const getMyBounties = async (req: AuthRequest, res: Response) => {
     const items = await Promise.all(
       rawItems.map(async (bounty) => ({
         ...bounty,
-        filePath: await getSignedUrl(bounty.filePath),
+        filePath: await getSignedReadUrl(bounty.filePath),
       }))
     );
 

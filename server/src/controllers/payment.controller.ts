@@ -39,67 +39,84 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
 };
 
 // Step 2: Verify payment signature, credit Bcoins on success, log either outcome
+// Step 2: Verify payment signature, credit Bcoins on success, log either outcome
 export const verifyPayment = async (req: AuthRequest, res: Response) => {
-    const {
-        razorpay_order_id,
-        razorpay_payment_id,
-        razorpay_signature,
-        amount, // INR amount that was charged, sent back from frontend for logging
-    } = req.body;
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    amount, // INR amount that was charged, sent back from frontend for logging
+  } = req.body;
 
-    const userId = req.userId!;
+  const userId = req.userId!;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
-        return response(res, 400, false, "Missing required payment verification fields");
-    }
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !amount) {
+    return response(res, 400, false, "Missing required payment verification fields");
+  }
 
-    // Recompute the expected signature using our key secret.
-    // If it doesn't match what Razorpay sent, the payment claim is forged or tampered with.
-    const expectedSignature = crypto
-        .createHmac("sha256", config.razorpayKeySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest("hex");
+  // Recompute the expected signature using our key secret.
+  // If it doesn't match what Razorpay sent, the payment claim is forged or tampered with.
+  const expectedSignature = crypto
+    .createHmac("sha256", config.razorpayKeySecret)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex");
 
-    const isSignatureValid = expectedSignature === razorpay_signature;
+  const isSignatureValid = expectedSignature === razorpay_signature;
 
-    if (!isSignatureValid) {
-        // Log the failed attempt — amount in paise, status "failed"
-        await prisma.paymentHistory.create({
-            data: {
-                userId,
-                amount: amount * 100,
-                status: "failed",
-            },
-        });
-
-        return response(res, 400, false, "Payment verification failed. Signature mismatch.");
-    }
-
-    // Signature valid — credit Bcoins and log success, atomically
-    const bcoinsToCredit = amount; // 1 INR = 1 Bcoin
-
-    const result = await prisma.$transaction(async (tx) => {
-        const updatedUser = await tx.user.update({
-            where: { id: userId },
-            data: { bcoins: { increment: bcoinsToCredit } },
-            select: { id: true, email: true, bcoins: true },
-        });
-
-        const paymentRecord = await tx.paymentHistory.create({
-            data: {
-                userId,
-                amount: amount * 100,
-                status: "success",
-            },
-        });
-
-        return { updatedUser, paymentRecord };
+  if (!isSignatureValid) {
+    await prisma.paymentHistory.create({
+      data: {
+        userId,
+        amount: amount * 100,
+        status: "failed",
+      },
     });
 
-    return response(res, 200, true, "Payment verified and Bcoins credited successfully", {
-        user: result.updatedUser,
-        payment: result.paymentRecord,
+    return response(res, 400, false, "Payment verification failed. Signature mismatch.");
+  }
+
+  // Signature valid — apply 10% platform fee, credit the remainder as Bcoins,
+  // log both the payment record and the Bcoins ledger entry, all atomically.
+  const PLATFORM_FEE_PERCENT = 0.1;
+  const platformFee = Math.ceil(amount * PLATFORM_FEE_PERCENT);
+  const bcoinsToCredit = Math.floor(amount * (1 - PLATFORM_FEE_PERCENT));
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedUser = await tx.user.update({
+      where: { id: userId },
+      data: { bcoins: { increment: bcoinsToCredit } },
+      select: { id: true, email: true, bcoins: true },
     });
+
+    const paymentRecord = await tx.paymentHistory.create({
+      data: {
+        userId,
+        amount: amount * 100,
+        status: "success",
+      },
+    });
+
+    await tx.bcoinsUsage.create({
+      data: {
+        userId,
+        type: "credit",
+        amount: bcoinsToCredit,
+        reason: "payment",
+      },
+    });
+
+    return { updatedUser, paymentRecord };
+  });
+
+  return response(res, 200, true, "Payment verified and Bcoins credited successfully", {
+    user: result.updatedUser,
+    payment: result.paymentRecord,
+    breakdown: {
+      amountPaid: amount,
+      platformFee,
+      bcoinsCredited: bcoinsToCredit,
+    },
+  });
 };
 
 // Fetch paginated payment history for the logged-in user, newest first, cursor-based
