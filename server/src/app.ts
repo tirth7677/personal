@@ -8,6 +8,7 @@ import healthRoutes from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
 import paymentRoutes from "./routes/payment.routes";
 import bountyRoutes from "./routes/bounty.routes";
+import submissionRoutes from "./routes/submission.routes";
 import { response } from "./utils/response";
 import { config } from "./config/env";
 
@@ -31,6 +32,7 @@ app.use("/api/v1/health", healthRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/payment", paymentRoutes);
 app.use("/api/v1/bounty", bountyRoutes);
+app.use("/api/v1/submission", submissionRoutes);
 
 // 404 fallback for unmatched routes
 app.use((req: Request, res: Response) => {

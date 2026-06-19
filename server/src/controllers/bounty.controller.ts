@@ -238,3 +238,63 @@ export const getMyBounties = async (req: AuthRequest, res: Response) => {
     return response(res, 500, false, "Failed to fetch your bounties");
   }
 };
+
+// Public: fetch a single bounty's full details by ID, including the poster's info
+// and all submissions made to it (empty array if none yet, or if Submission
+// queries aren't wired up — included now so the response shape is already
+// future-proof for when submission viewing is built out further).
+export const getBountyById = async (req: AuthRequest, res: Response) => {
+  try {
+    const bountyId = Number(req.params.id);
+
+    if (!bountyId || isNaN(bountyId)) {
+      return response(res, 400, false, "A valid bounty ID is required");
+    }
+
+    const bounty = await prisma.bounty.findUnique({
+      where: { id: bountyId },
+      include: {
+        user: {
+          select: { id: true, username: true },
+        },
+        submissions: {
+          orderBy: { id: "desc" },
+          select: {
+            id: true,
+            userId: true,
+            filePath: true,
+            comment: true,
+            createdAt: true,
+            user: {
+              select: { id: true, username: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!bounty) {
+      return response(res, 404, false, "Bounty not found");
+    }
+
+    const filePath = await getSignedReadUrl(bounty.filePath);
+
+    const submissions = await Promise.all(
+      bounty.submissions.map(async (submission) => ({
+        ...submission,
+        filePath: await getSignedReadUrl(submission.filePath),
+      }))
+    );
+
+    return response(res, 200, true, "Bounty fetched successfully", {
+      bounty: {
+        ...bounty,
+        filePath,
+        submissions,
+      },
+    });
+  } catch (error) {
+    console.error("Get bounty by ID error:", error);
+    return response(res, 500, false, "Failed to fetch bounty");
+  }
+};

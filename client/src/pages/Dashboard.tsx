@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import CountdownTimer from '../components/CountdownTimer'
 
@@ -21,6 +22,8 @@ interface Bounty {
 const PAGE_SIZE = 9
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+
   const [bounties, setBounties] = useState<Bounty[]>([])
   const [nextCursor, setNextCursor] = useState<number | null>(null)
   const [hasMore, setHasMore] = useState(false)
@@ -129,6 +132,7 @@ export default function Dashboard() {
               {bounties.map((bounty) => (
                 <div
                   key={bounty.id}
+                  onClick={() => navigate(`/bounty/${bounty.id}`)}
                   className="bg-[#11112A] border border-[rgba(0,191,255,0.15)] rounded-xl
                              hover:border-[rgba(191,95,255,0.4)] hover:-translate-y-0.5
                              transition-all duration-200 cursor-pointer flex flex-col overflow-hidden"

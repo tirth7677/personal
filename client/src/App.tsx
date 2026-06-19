@@ -12,6 +12,7 @@ import PaymentHistory from './pages/PaymentHistory'
 import BcoinsHistory from './pages/Bcoinshistory'
 import CreateBounty from './pages/Createbounty'
 import MyBounty from './pages/mybounty'
+import BountyDetail from './pages/Bountydetail'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
 
           {/* Public — no auth required */}
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/bounty/:id" element={<BountyDetail />} />
 
           {/* Protected — requires login, shows modal if not authenticated */}
           <Route path='/Wallet' element={<ProtectedRoute><Wallet/></ProtectedRoute>}/>
