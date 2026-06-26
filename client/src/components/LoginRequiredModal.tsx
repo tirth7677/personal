@@ -61,10 +61,10 @@ export default function LoginRequiredModal({ onClose }: LoginRequiredModalProps)
               Go to Login →
             </button>
             <button
-              onClick={onClose}
+              onClick={() => navigate('/dashboard')}
               className="text-white/40 hover:text-white/70 text-sm font-medium bg-transparent border-0 cursor-pointer transition-colors"
             >
-              Stay on this page
+              Go back to Dashboard
             </button>
           </div>
         </div>
